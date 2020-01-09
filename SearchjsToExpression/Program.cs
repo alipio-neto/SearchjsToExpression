@@ -40,6 +40,8 @@ namespace SearchjsToExpression
             //var exp = Utils.BuildOrElse( list.ToArray( ) );
             var exp = Utils.BuildAnd( list.ToArray( ) );
 
+            var exp2 = Utils.BuildOrElse( exp, Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
+
             var result = people.Where( exp.Compile( ) );
 
             var a = result.ToList( );

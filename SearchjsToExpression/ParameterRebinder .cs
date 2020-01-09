@@ -25,9 +25,7 @@ namespace SearchjsToExpression
 
             if( map.TryGetValue( p, out replacement ) )
             {
-
                 p = replacement;
-
             }
 
             return base.VisitParameter( p );
