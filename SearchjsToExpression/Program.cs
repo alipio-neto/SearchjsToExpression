@@ -19,38 +19,26 @@ namespace SearchjsToExpression
 
     class Program
     {
-        public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, int rightValue )
-        {
-            var param = Expression.Parameter( typeof( T ), "x" );
-            Expression left = param;
-            foreach( var member in propertyName.Split( '.' ) )
-            {
-                left = Expression.PropertyOrField( left, member );
-            }
-
-            var right = Expression.Constant( rightValue );
-
-            var innerLambda = Expression.Equal( left, right );
-
-            return Expression.Lambda<Func<T, bool>>( innerLambda, param );
-        }
-
         static void Main( string[ ] args )
         {
             string str = "{Detail.Age: 30}";
+
             var people = new List<Person>( )
             {
                 new Person( ){ Name = "Pedro", Detail = new PersonDetail( ){ Age = 50, Gender = "M" } },
-                new Person( ){ Name = "Maria", Detail = new PersonDetail( ){ Age = 30, Gender = "F" } }
+                new Person( ){ Name = "Maria", Detail = new PersonDetail( ){ Age = 30, Gender = "F" } },
+                new Person( ){ Name = "João", Detail = new PersonDetail( ){ Age = 18, Gender = "B" } }
             };
 
-            var exp = CreateExpression<Person>( "Detail.Age", 30);
+            List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
 
-            //var param = LambdaExpression.Parameter( typeof( Person ), "x" );
-            //var left = LambdaExpression.PropertyOrField( param, "age" );
-            //var right = Expression.Constant( 30 );
-            //var innerLambda = Expression.Equal( left, right );
-            //var exp = Expression.Lambda<Func<Person, bool>>( innerLambda, param );
+            //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "M" ) );
+            //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
+            list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "B" ) );
+            list.Add( Utils.CreateExpression<Person>( "Name", "João") );
+
+            //var exp = Utils.BuildOrElse( list.ToArray( ) );
+            var exp = Utils.BuildAnd( list.ToArray( ) );
 
             var result = people.Where( exp.Compile( ) );
 
