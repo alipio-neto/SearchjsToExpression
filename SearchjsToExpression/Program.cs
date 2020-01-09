@@ -9,12 +9,19 @@ namespace SearchjsToExpression
     {
         public string Name { get; set; }
         public PersonDetail Detail { get; set; }
+        public List<Car> Cars { get; set; }
     }
 
     public class PersonDetail
     {
         public string Gender { get; set; }
         public int Age { get; set; }
+    }
+
+    public class Car
+    {
+        public string Brand { get; set; }
+        public int HP { get; set; }
     }
 
     class Program
@@ -25,22 +32,27 @@ namespace SearchjsToExpression
 
             var people = new List<Person>( )
             {
-                new Person( ){ Name = "Pedro", Detail = new PersonDetail( ){ Age = 50, Gender = "M" } },
-                new Person( ){ Name = "Maria", Detail = new PersonDetail( ){ Age = 30, Gender = "F" } },
-                new Person( ){ Name = "João", Detail = new PersonDetail( ){ Age = 18, Gender = "B" } }
+                new Person( ){ Name = "Pedro", Detail = new PersonDetail( ){ Age = 50, Gender = "M" },
+                    Cars = new List<Car>( ){ new Car(){ Brand = "BMW", HP = 500 } } },
+                new Person( ){ Name = "Maria", Detail = new PersonDetail( ){ Age = 30, Gender = "F" },
+                    Cars = new List<Car>( ){ new Car(){ Brand = "Aud", HP = 400 } } },
+                new Person( ){ Name = "João", Detail = new PersonDetail( ){ Age = 18, Gender = "B" },
+                    Cars = new List<Car>( ){ new Car(){ Brand = "Mer", HP = 300 } } },
             };
 
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
 
             //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "M" ) );
             //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
-            list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "B" ) );
-            list.Add( Utils.CreateExpression<Person>( "Name", "João") );
+            //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "B" ) );
+            //list.Add( Utils.CreateExpression<Person>( "Name", "João") );
 
             //var exp = Utils.BuildOrElse( list.ToArray( ) );
-            var exp = Utils.BuildAnd( list.ToArray( ) );
+            //var exp = Utils.BuildAnd( list.ToArray( ) );
 
-            var exp2 = Utils.BuildOrElse( exp, Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
+            //var exp2 = Utils.BuildOrElse( exp, Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
+
+            var exp = Utils.CreateExpression<Person>( "Cars", "BMW" );
 
             var result = people.Where( exp.Compile( ) );
 
