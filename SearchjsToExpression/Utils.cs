@@ -34,23 +34,29 @@ namespace SearchjsToExpression
                     property = property.PropertyType.GetProperty( member );
                 }
 
-                if( property.PropertyType.GetInterfaces( ).Any( x =>
+                if( property != null )
+                {
+                    if( property.PropertyType.GetInterfaces( ).Any( x =>
                     x.IsGenericType && x.GetGenericTypeDefinition( ) == typeof( ICollection<> ) ) )
-                {
-                    left = Expression.PropertyOrField( left, member );
-                    auxPropertyName = propertyName.Substring( propertyName.IndexOf( member ) + member.Length + 1 );
-                    isCollection = true;
-                    break;
-                }
-                else
-                {
-                    left = Expression.PropertyOrField( left, member );
+                    {
+                        left = Expression.PropertyOrField( left, member );
+                        int length = propertyName.IndexOf( member ) + member.Length;
+                        length = ( length + 1 ) > propertyName.Length ? member.Length : length + 1;
+                        auxPropertyName = propertyName.Substring( length );
+                        isCollection = true;
+                        break;
+                    }
+                    else
+                    {
+                        left = Expression.PropertyOrField( left, member );
+                    }
                 }
             }
 
             if( isCollection )
             {
-                Type typeFromList = property.PropertyType.GetGenericArguments( )[ 0 ];
+                Type typeFromList = property.PropertyType.IsArray ? property.PropertyType.GetElementType( )
+                    : property.PropertyType.GetGenericArguments( )[ 0 ];
 
                 var innerFunction = BuildExpression( auxPropertyName, rightValue, typeFromList );
                 var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeFromList }, left, innerFunction );
