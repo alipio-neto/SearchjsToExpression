@@ -52,7 +52,7 @@ namespace SearchjsToExpression
 
             //var exp2 = Utils.BuildOrElse( exp, Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
 
-            var exp = Utils.CreateExpression<Person>( "Cars", "BMW" );
+            var exp = Utils.CreateExpression<Person>( "Cars.Brand", "BMW" );
 
             var result = people.Where( exp.Compile( ) );
 

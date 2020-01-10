@@ -67,28 +67,48 @@ namespace SearchjsToExpression
         public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue )
         {
             var param = Expression.Parameter( typeof( T ), "x" );
+            var isCollection = false;
 
             Expression left = param;
             foreach( var member in propertyName.Split( '.' ) )
             {
-                left = Expression.PropertyOrField( left, member );
+                if( typeof( T ).GetProperty( member ).PropertyType.GetInterfaces( ).Any( x =>
+                    x.IsGenericType && x.GetGenericTypeDefinition( ) == typeof( ICollection<> ) ) )
+                {
+                    break;
+                }
+                else
+                {
+                    left = Expression.PropertyOrField( left, member );
+                }
             }
-
-            var paramArray = Expression.Parameter( typeof( Car ), "b" );
-            Expression outerLeft = paramArray;
-            outerLeft = Expression.PropertyOrField( outerLeft, "Brand" );
 
             var right = Expression.Constant( rightValue );
 
-            var innerLambda = Expression.Equal( outerLeft, right );
+            if( isCollection )
+            {
+                var exp = CreateExpression<T>( propertyName, rightValue );
 
-            Expression<Func<Car, bool>> innerFunction = Expression.Lambda<Func<Car, bool>>( innerLambda, paramArray );
+                var paramArray = Expression.Parameter( typeof( Car ), "b" );
+                
+                Expression outerLeft = paramArray;
+                outerLeft = Expression.PropertyOrField( outerLeft, "Brand" );
 
-            var OuterLambda = Expression.Call(
-                typeof( Enumerable ), "Any", new[ ] { typeof( Car ) },
-                left, innerFunction);
+                var innerLambda = Expression.Equal( outerLeft, right );
 
-            return Expression.Lambda<Func<T, bool>>( OuterLambda, param );
+                Expression<Func<Car, bool>> innerFunction = Expression.Lambda<Func<Car, bool>>( innerLambda, paramArray );
+
+                var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeof( Car ) }, left, innerFunction );
+
+                return Expression.Lambda<Func<T, bool>>( OuterLambda, param );
+            }
+            else
+            {
+                var innerLambda = Expression.Equal( left, right );
+
+                //return Expression.Lambda<Func<T, bool>>( Expression.Not( innerLambda ), param );
+                return Expression.Lambda<Func<T, bool>>( innerLambda, param );
+            }
         }
 
         public static Expression<T> Compose<T>( this Expression<T> first, Expression<T> second, Func<Expression, Expression, Expression> merge )
