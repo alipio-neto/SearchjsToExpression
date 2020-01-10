@@ -16,6 +16,13 @@ namespace SearchjsToExpression
     {
         public string Gender { get; set; }
         public int Age { get; set; }
+        public List<Dog> Dogs { get; set; }
+    }
+
+    public class Dog
+    {
+        public string Name { get; set; }
+        public string Race { get; set; }
     }
 
     public class Car
@@ -32,15 +39,25 @@ namespace SearchjsToExpression
 
             var people = new List<Person>( )
             {
-                new Person( ){ Name = "Pedro", Detail = new PersonDetail( ){ Age = 50, Gender = "M" },
-                    Cars = new List<Car>( ){ new Car(){ Brand = "BMW", HP = 500 } } },
-                new Person( ){ Name = "Maria", Detail = new PersonDetail( ){ Age = 30, Gender = "F" },
-                    Cars = new List<Car>( ){ new Car(){ Brand = "Aud", HP = 400 } } },
-                new Person( ){ Name = "João", Detail = new PersonDetail( ){ Age = 18, Gender = "B" },
+                new Person( ){ Name = "Pedro",
+                    Detail = new PersonDetail( ){ Age = 50, Gender = "M",
+                        Dogs  = new List<Dog>( ) { new Dog( ) { Name = "Max", Race = "Hot" } } },
+                    Cars = new List<Car>( ){ new Car(){ Brand = "BMW", HP = 500 } }
+                },
+                new Person( ){ Name = "Maria", 
+                    Detail = new PersonDetail( ){ Age = 30, Gender = "F",
+                        Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M1", Race = "H1" } } },
+                    Cars = new List<Car>( ){ new Car(){ Brand = "Aud", HP = 400 } }
+                },
+                new Person( ){ Name = "João",
+                    Detail = new PersonDetail( ){ Age = 18, Gender = "B" ,
+                        Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M2", Race = "H2" } } },
                     Cars = new List<Car>( ){ new Car(){ Brand = "Mer", HP = 300 } } },
             };
 
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
+
+            //var a = people.Any( x => x.Detail.Dogs.Any( x => x.Name == "Max" ) );
 
             //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "M" ) );
             //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
@@ -53,10 +70,11 @@ namespace SearchjsToExpression
             //var exp2 = Utils.BuildOrElse( exp, Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
 
             var exp = Utils.CreateExpression<Person>( "Cars.Brand", "BMW" );
+            //var exp = Utils.CreateExpression<Person>( "Detail.Dogs.Name", "Ate" );
 
-            var result = people.Where( exp.Compile( ) );
+            var result = people.Where( exp );
 
-            var a = result.ToList( );
+            var ab = result.ToList( );
 
             Console.ReadKey( );
         }

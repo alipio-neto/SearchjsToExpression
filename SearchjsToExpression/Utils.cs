@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 
 namespace SearchjsToExpression
@@ -61,21 +62,41 @@ namespace SearchjsToExpression
         //    MethodCallExpression whereCallExpression = Expression.Call( typeof( Queryable ), "Where", new Type[ ] { officeQuery.ElementType },
         //        officeQuery.Expression, Expression.Lambda<Func<Office, bool>>( ComplexWhere, new ParameterExpression[ ] { pe } ) );
         //    results = officeQuery.Provider.CreateQuery<Office>( whereCallExpression );
-            
+
         //}
 
-        public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue )
+        public static Func<T, bool> CreateExpression<T>( string propertyName, object rightValue )
         {
-            var param = Expression.Parameter( typeof( T ), "x" );
-            var isCollection = false;
+            var exp = BuildExpression( propertyName, rightValue, typeof( T ) );
+            return ( Func<T, bool> ) exp.Compile();
+        }
 
+        public static LambdaExpression BuildExpression ( string propertyName, object rightValue, Type type )
+        {
+            var param = Expression.Parameter( type, "x" );
+            var isCollection = false;
+            PropertyInfo property = null;
             Expression left = param;
+            string auxPropertyName = "";
+
             foreach( var member in propertyName.Split( '.' ) )
             {
-                if( typeof( T ).GetProperty( member ).PropertyType.GetInterfaces( ).Any( x =>
+                if( property == null )
+                {
+                    property = type.GetProperty( member );
+                }
+                else
+                {
+                    property = property.PropertyType.GetProperty( member );
+                }
+
+                //property = type.GetProperty( member );
+
+                if( property.PropertyType.GetInterfaces( ).Any( x =>
                     x.IsGenericType && x.GetGenericTypeDefinition( ) == typeof( ICollection<> ) ) )
                 {
                     left = Expression.PropertyOrField( left, member );
+                    auxPropertyName = propertyName.Substring( propertyName.IndexOf( member ) + member.Length + 1 );
                     isCollection = true;
                     break;
                 }
@@ -85,31 +106,32 @@ namespace SearchjsToExpression
                 }
             }
 
-            var right = Expression.Constant( rightValue );
-
             if( isCollection )
             {
-                //var exp = CreateExpression<T>( propertyName, rightValue );
+                var strLeft = auxPropertyName.Split( "." )[0];
+                Type typeFromList = property.PropertyType.GetGenericArguments( )[ 0 ];
 
-                var paramArray = Expression.Parameter( typeof( Car ), "b" );
-                
-                Expression outerLeft = paramArray;
-                outerLeft = Expression.PropertyOrField( outerLeft, "Brand" );
+                var innerFunction = BuildExpression( auxPropertyName, rightValue, typeFromList );
 
-                var innerLambda = Expression.Equal( outerLeft, right );
+                //var paramArray = Expression.Parameter( typeFromList, "x" );
+                //Expression outerLeft = paramArray;
+                //outerLeft = Expression.PropertyOrField( outerLeft, strLeft );
+                //var innerLambda = Expression.Equal( outerLeft, right );
+                //Expression<Func<typeFromList, bool>> innerFunction = Expression.Lambda<Func<typeFromList, bool>>( innerLambda, paramArray );
+                //Expression innerFunction = Expression.Lambda( innerLambda, paramArray );
 
-                Expression<Func<Car, bool>> innerFunction = Expression.Lambda<Func<Car, bool>>( innerLambda, paramArray );
+                var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeFromList }, left, innerFunction );
 
-                var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeof( Car ) }, left, innerFunction );
-
-                return Expression.Lambda<Func<T, bool>>( OuterLambda, param );
+                return Expression.Lambda( OuterLambda, param );
             }
             else
             {
+                var right = Expression.Constant( rightValue );
+
                 var innerLambda = Expression.Equal( left, right );
 
                 //return Expression.Lambda<Func<T, bool>>( Expression.Not( innerLambda ), param );
-                return Expression.Lambda<Func<T, bool>>( innerLambda, param );
+                return Expression.Lambda( innerLambda, param );
             }
         }
 
