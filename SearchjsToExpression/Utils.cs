@@ -9,62 +9,6 @@ namespace SearchjsToExpression
 {
     public static class Utils
     {
-        //public static Expression<Func<T, bool>> CreateExpressions<T>( string propertyName, object rightValue )
-        //{
-        //    IQueryable<Office> officeQuery = CurrentDataSource.Offices.AsQueryable<Office>( );
-        //    ParameterExpression pe = Expression.Parameter( typeof( Office ), "Office" );
-        //    ParameterExpression tpe = Expression.Parameter( typeof( Trades ), "Trades" );
-
-        //    Expression SimpleWhere = null;
-        //    Expression ComplexWhere = null;
-        //    foreach( ServerSideFilterObject fo in ssfo )
-        //    {
-        //        SimpleWhere = null;
-        //        foreach( String value in fo.FilterValues )
-        //        {
-        //            if( !CollectionProperties.Contains( fo.PropertyName ) )
-        //            {
-        //                //Handle singleton lambda logic here.
-        //                Expression left = Expression.Property( pe, typeof( Office ).GetProperty( fo.PropertyName ) );
-        //                Expression right = Expression.Constant( value );
-        //                if( SimpleWhere == null )
-        //                {
-        //                    SimpleWhere = Expression.Equal( left, right );
-        //                }
-        //                else
-        //                {
-        //                    Expression e1 = Expression.Equal( left, right );
-        //                    SimpleWhere = Expression.Or( SimpleWhere, e1 );
-        //                }
-        //            }
-        //            else
-        //            {
-        //                Expression left = Expression.Property( tpe, typeof( Trades ).GetProperty( "Name" ) );
-        //                Expression right = Expression.Constant( value );
-        //                Expression InnerLambda = Expression.Equal( left, right );
-        //                Expression<Func<Trades, bool>> innerFunction = Expression.Lambda<Func<Trades, bool>>( InnerLambda, tpe );
-
-        //                method = typeof( Enumerable ).GetMethods( ).Where( m => m.Name == "Any" && m.GetParameters( ).Length == 2 ).Single( ).MakeGenericMethod( typeof( Trades ) );
-        //                OuterLambda = Expression.Call( method, Expression.Property( pe, typeof( Office ).GetProperty( fo.PropertyName ) ), innerFunction );
-
-        //                if( SimpleWhere == null )
-        //                    SimpleWhere = OuterLambda;
-        //                else
-        //                    SimpleWhere = Expression.Or( SimpleWhere, OuterLambda );
-        //            }
-        //        }
-        //        if( ComplexWhere == null )
-        //            ComplexWhere = SimpleWhere;
-        //        else
-        //            ComplexWhere = Expression.And( ComplexWhere, SimpleWhere );
-        //    }
-
-        //    MethodCallExpression whereCallExpression = Expression.Call( typeof( Queryable ), "Where", new Type[ ] { officeQuery.ElementType },
-        //        officeQuery.Expression, Expression.Lambda<Func<Office, bool>>( ComplexWhere, new ParameterExpression[ ] { pe } ) );
-        //    results = officeQuery.Provider.CreateQuery<Office>( whereCallExpression );
-
-        //}
-
         public static Func<T, bool> CreateExpression<T>( string propertyName, object rightValue )
         {
             var exp = BuildExpression( propertyName, rightValue, typeof( T ) );
@@ -90,8 +34,6 @@ namespace SearchjsToExpression
                     property = property.PropertyType.GetProperty( member );
                 }
 
-                //property = type.GetProperty( member );
-
                 if( property.PropertyType.GetInterfaces( ).Any( x =>
                     x.IsGenericType && x.GetGenericTypeDefinition( ) == typeof( ICollection<> ) ) )
                 {
@@ -108,18 +50,9 @@ namespace SearchjsToExpression
 
             if( isCollection )
             {
-                var strLeft = auxPropertyName.Split( "." )[0];
                 Type typeFromList = property.PropertyType.GetGenericArguments( )[ 0 ];
 
                 var innerFunction = BuildExpression( auxPropertyName, rightValue, typeFromList );
-
-                //var paramArray = Expression.Parameter( typeFromList, "x" );
-                //Expression outerLeft = paramArray;
-                //outerLeft = Expression.PropertyOrField( outerLeft, strLeft );
-                //var innerLambda = Expression.Equal( outerLeft, right );
-                //Expression<Func<typeFromList, bool>> innerFunction = Expression.Lambda<Func<typeFromList, bool>>( innerLambda, paramArray );
-                //Expression innerFunction = Expression.Lambda( innerLambda, paramArray );
-
                 var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeFromList }, left, innerFunction );
 
                 return Expression.Lambda( OuterLambda, param );
@@ -145,7 +78,6 @@ namespace SearchjsToExpression
 
             // apply composition of lambda expression bodies to parameters from the first expression 
             return Expression.Lambda<T>( merge( first.Body, secondBody ), first.Parameters );
-
         }
 
         public static Expression<Func<T, bool>> And<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second )
