@@ -75,6 +75,8 @@ namespace SearchjsToExpression
                 if( typeof( T ).GetProperty( member ).PropertyType.GetInterfaces( ).Any( x =>
                     x.IsGenericType && x.GetGenericTypeDefinition( ) == typeof( ICollection<> ) ) )
                 {
+                    left = Expression.PropertyOrField( left, member );
+                    isCollection = true;
                     break;
                 }
                 else
@@ -87,7 +89,7 @@ namespace SearchjsToExpression
 
             if( isCollection )
             {
-                var exp = CreateExpression<T>( propertyName, rightValue );
+                //var exp = CreateExpression<T>( propertyName, rightValue );
 
                 var paramArray = Expression.Parameter( typeof( Car ), "b" );
                 
