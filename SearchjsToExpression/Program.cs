@@ -19,6 +19,8 @@ namespace SearchjsToExpression
         public string Gender { get; set; }
         public int Age { get; set; }
         public List<Dog> Dogs { get; set; }
+        public Dog[ ] Doges { get; set; }
+        public int[ ] Days { get; set; }
     }
 
     public class Dog
@@ -43,21 +45,36 @@ namespace SearchjsToExpression
             {
                 new Person( ){ 
                     Name = "Pedro",
-                    Detail = new PersonDetail( ){ Age = 50, Gender = "M", Dogs  = new List<Dog>( ) { new Dog( ) { Name = "Max", Race = "Hot" } } },
+                    Detail = new PersonDetail( ){ 
+                        Age = 50, Gender = "M",
+                        Dogs = new List<Dog>( ) { new Dog( ) { Name = "Max", Race = "Hot" } },
+                        Doges = new Dog[] { new Dog( ) { Name = "Max", Race = "Hot" } },
+                        Days  = new int[] { 1, 2, 3 }
+                    },
                     Cars = new List<Car>( ){ new Car(){ Brand = "BMW", HP = 500 } },
                     Cares = new Car[] { new Car(){ Brand = "BMW", HP = 500 } },
                     Lotery  = new int[] { 1, 2, 3 }
                 },
                 new Person( ){ 
                     Name = "Maria", 
-                    Detail = new PersonDetail( ){ Age = 30, Gender = "F", Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M1", Race = "H1" } } },
+                    Detail = new PersonDetail( ){ 
+                        Age = 30, Gender = "F", 
+                        Dogs = new List<Dog>( ) { new Dog( ) { Name = "M1", Race = "H1" } },
+                        Doges = new Dog[] { new Dog( ) { Name = "M1", Race = "H1" } },
+                        Days  = new int[] { 4, 5 }
+                    },
                     Cars = new List<Car>( ){ new Car(){ Brand = "Aud", HP = 400 } },
                     Cares = new Car[] { new Car(){ Brand = "Aud", HP = 400 } },
                     Lotery  = new int[] { 4, 5 }
                 },
                 new Person( ){ 
                     Name = "João",
-                    Detail = new PersonDetail( ){ Age = 18, Gender = "B", Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M2", Race = "H2" } } },
+                    Detail = new PersonDetail( ){ 
+                        Age = 18, Gender = "B", 
+                        Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M2", Race = "H2" } },
+                        Doges = new Dog[] { new Dog( ) { Name = "M1", Race = "H1" } },
+                        Days  = new int[] { 6, 7 }
+                    },
                     Cars = new List<Car>( ){ new Car(){ Brand = "Mer", HP = 300 } },
                     Cares = new Car[] { new Car(){ Brand = "Mer", HP = 300 } },
                     Lotery  = new int[] { 6, 7 }
@@ -83,7 +100,9 @@ namespace SearchjsToExpression
             //var exp = Utils.CreateExpression<Person>( "Detail.Dogs.Race", "H2" );
             //var exp = Utils.CreateExpression<Person>( "Cares.Brand", "BMW" );
             //var exp = Utils.CreateExpression<Person>( "Lotery", 1 );
-            var exp = Utils.CreateExpression<Person>( "Cars.HP", 400, "lte" );
+            //var exp = Utils.CreateExpression<Person>( "Cars.HP", 400, "lte" );
+            //var exp = Utils.CreateExpression<Person>( "Detail.Doges.Name", "Max" );
+            var exp = Utils.CreateExpression<Person>( "Detail.Days", 2 );
 
             var result = people.Where( exp );
 
