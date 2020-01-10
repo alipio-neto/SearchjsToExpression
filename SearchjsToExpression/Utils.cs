@@ -9,13 +9,38 @@ namespace SearchjsToExpression
 {
     public static class Utils
     {
-        public static Func<T, bool> CreateExpression<T>( string propertyName, object rightValue )
+        public static Func<Expression, Expression, Expression> GetBinaryComparator ( string comparator = "" )
         {
-            var exp = BuildExpression( propertyName, rightValue, typeof( T ) );
-            return ( Func<T, bool> ) exp.Compile();
+            switch( comparator )
+            {
+                case "":
+                    return Expression.Equal;
+                case "from":
+                    return Expression.GreaterThanOrEqual;
+                case "to":
+                    return Expression.LessThanOrEqual;
+                case "gte":
+                    return Expression.GreaterThanOrEqual;
+                case "lte":
+                    return Expression.LessThanOrEqual;
+                case "gt":
+                    return Expression.GreaterThan;
+                case "lt":
+                    return Expression.LessThan;
+                default:
+                    break;
+            }
+
+            return null;
         }
 
-        public static LambdaExpression BuildExpression ( string propertyName, object rightValue, Type type )
+        public static Func<T, bool> CreateExpression<T>( string propertyName, object rightValue, string comparator = "", bool not = false )
+        {
+            var exp = BuildExpression( propertyName, rightValue, not, typeof( T ), GetBinaryComparator( comparator ) );
+            return ( Func<T, bool> ) exp.Compile( );
+        }
+
+        public static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, Func<Expression, Expression, Expression> compare )
         {
             var param = Expression.Parameter( type, "x" );
             var isCollection = false;
@@ -58,7 +83,7 @@ namespace SearchjsToExpression
                 Type typeFromList = property.PropertyType.IsArray ? property.PropertyType.GetElementType( )
                     : property.PropertyType.GetGenericArguments( )[ 0 ];
 
-                var innerFunction = BuildExpression( auxPropertyName, rightValue, typeFromList );
+                var innerFunction = BuildExpression( auxPropertyName, rightValue, not, typeFromList, compare );
                 var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeFromList }, left, innerFunction );
 
                 return Expression.Lambda( OuterLambda, param );
@@ -67,9 +92,11 @@ namespace SearchjsToExpression
             {
                 var right = Expression.Constant( rightValue );
 
-                var innerLambda = Expression.Equal( left, right );
+                var innerLambda = compare( left, right );
 
-                //return Expression.Lambda<Func<T, bool>>( Expression.Not( innerLambda ), param );
+                if ( not )
+                    innerLambda = Expression.Not( innerLambda );
+
                 return Expression.Lambda( innerLambda, param );
             }
         }

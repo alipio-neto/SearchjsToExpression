@@ -41,23 +41,23 @@ namespace SearchjsToExpression
 
             var people = new List<Person>( )
             {
-                new Person( ){ Name = "Pedro",
-                    Detail = new PersonDetail( ){ Age = 50, Gender = "M",
-                        Dogs  = new List<Dog>( ) { new Dog( ) { Name = "Max", Race = "Hot" } } },
+                new Person( ){ 
+                    Name = "Pedro",
+                    Detail = new PersonDetail( ){ Age = 50, Gender = "M", Dogs  = new List<Dog>( ) { new Dog( ) { Name = "Max", Race = "Hot" } } },
                     Cars = new List<Car>( ){ new Car(){ Brand = "BMW", HP = 500 } },
                     Cares = new Car[] { new Car(){ Brand = "BMW", HP = 500 } },
                     Lotery  = new int[] { 1, 2, 3 }
                 },
-                new Person( ){ Name = "Maria", 
-                    Detail = new PersonDetail( ){ Age = 30, Gender = "F",
-                        Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M1", Race = "H1" } } },
+                new Person( ){ 
+                    Name = "Maria", 
+                    Detail = new PersonDetail( ){ Age = 30, Gender = "F", Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M1", Race = "H1" } } },
                     Cars = new List<Car>( ){ new Car(){ Brand = "Aud", HP = 400 } },
                     Cares = new Car[] { new Car(){ Brand = "Aud", HP = 400 } },
                     Lotery  = new int[] { 4, 5 }
                 },
-                new Person( ){ Name = "João",
-                    Detail = new PersonDetail( ){ Age = 18, Gender = "B" ,
-                        Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M2", Race = "H2" } } },
+                new Person( ){ 
+                    Name = "João",
+                    Detail = new PersonDetail( ){ Age = 18, Gender = "B", Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M2", Race = "H2" } } },
                     Cars = new List<Car>( ){ new Car(){ Brand = "Mer", HP = 300 } },
                     Cares = new Car[] { new Car(){ Brand = "Mer", HP = 300 } },
                     Lotery  = new int[] { 6, 7 }
@@ -78,11 +78,12 @@ namespace SearchjsToExpression
 
             //var exp2 = Utils.BuildOrElse( exp, Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
 
-            //var exp = Utils.CreateExpression<Person>( "Cars.Brand", "BMW" );
+            //var exp = Utils.CreateExpression<Person>( "Cars.Brand", "BMW", "", true );
             //var exp = Utils.CreateExpression<Person>( "Detail.Dogs.Name", "Max" );
             //var exp = Utils.CreateExpression<Person>( "Detail.Dogs.Race", "H2" );
             //var exp = Utils.CreateExpression<Person>( "Cares.Brand", "BMW" );
-            var exp = Utils.CreateExpression<Person>( "Lotery", 1 );
+            //var exp = Utils.CreateExpression<Person>( "Lotery", 1 );
+            var exp = Utils.CreateExpression<Person>( "Cars.HP", 400, "lte" );
 
             var result = people.Where( exp );
 
