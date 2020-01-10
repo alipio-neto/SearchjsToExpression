@@ -9,24 +9,30 @@ namespace SearchjsToExpression
 {
     public static class Utils
     {
-        public static Func<Expression, Expression, Expression> GetBinaryComparator ( string comparator = "" )
+        public static Expression Compare ( Expression left, Expression right, string comparator = "" )
         {
             switch( comparator )
             {
                 case "":
-                    return Expression.Equal;
+                    return Expression.Equal(left, right);
                 case "from":
-                    return Expression.GreaterThanOrEqual;
+                    return Expression.GreaterThanOrEqual( left, right ); ;
                 case "to":
-                    return Expression.LessThanOrEqual;
+                    return Expression.LessThanOrEqual( left, right ); ;
                 case "gte":
-                    return Expression.GreaterThanOrEqual;
+                    return Expression.GreaterThanOrEqual( left, right ); ;
                 case "lte":
-                    return Expression.LessThanOrEqual;
+                    return Expression.LessThanOrEqual( left, right ); ;
                 case "gt":
-                    return Expression.GreaterThan;
+                    return Expression.GreaterThan( left, right ); ;
                 case "lt":
-                    return Expression.LessThan;
+                    return Expression.LessThan( left, right ); ;
+                case "_text":
+                    return Expression.Call( left, typeof( string ).GetMethod( "Contains", new[ ] { typeof( string ) } ), right );
+                case "_start":
+                    return Expression.Call( left, typeof( string ).GetMethod( "StartsWith", new[ ] { typeof( string ) } ), right );
+                case "_end":
+                    return Expression.Call( left, typeof( string ).GetMethod( "EndsWith", new[ ] { typeof( string ) } ), right );
                 default:
                     break;
             }
@@ -36,11 +42,11 @@ namespace SearchjsToExpression
 
         public static Func<T, bool> CreateExpression<T>( string propertyName, object rightValue, string comparator = "", bool not = false )
         {
-            var exp = BuildExpression( propertyName, rightValue, not, typeof( T ), GetBinaryComparator( comparator ) );
+            var exp = BuildExpression( propertyName, rightValue, not, typeof( T ), comparator );
             return ( Func<T, bool> ) exp.Compile( );
         }
 
-        public static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, Func<Expression, Expression, Expression> compare )
+        public static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
         {
             var param = Expression.Parameter( type, "x" );
             var isCollection = false;
@@ -83,7 +89,7 @@ namespace SearchjsToExpression
                 Type typeFromList = property.PropertyType.IsArray ? property.PropertyType.GetElementType( )
                     : property.PropertyType.GetGenericArguments( )[ 0 ];
 
-                var innerFunction = BuildExpression( auxPropertyName, rightValue, not, typeFromList, compare );
+                var innerFunction = BuildExpression( auxPropertyName, rightValue, not, typeFromList, comparator );
                 var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeFromList }, left, innerFunction );
 
                 return Expression.Lambda( OuterLambda, param );
@@ -92,7 +98,7 @@ namespace SearchjsToExpression
             {
                 var right = Expression.Constant( rightValue );
 
-                var innerLambda = compare( left, right );
+                var innerLambda = Compare( left, right, comparator );
 
                 if ( not )
                     innerLambda = Expression.Not( innerLambda );
