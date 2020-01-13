@@ -44,7 +44,7 @@ namespace SearchjsToExpression
             var people = new List<Person>( )
             {
                 new Person( ){ 
-                    Name = "Pedro",
+                    Name = "Pedro de Lara",
                     Detail = new PersonDetail( ){ 
                         Age = 50, Gender = "M",
                         Dogs = new List<Dog>( ) { new Dog( ) { Name = "Max", Race = "Hot" } },
@@ -56,7 +56,7 @@ namespace SearchjsToExpression
                     Lotery  = new int[] { 1, 2, 3 }
                 },
                 new Person( ){ 
-                    Name = "Maria", 
+                    Name = "Maria de Oliveira", 
                     Detail = new PersonDetail( ){ 
                         Age = 30, Gender = "F", 
                         Dogs = new List<Dog>( ) { new Dog( ) { Name = "M1", Race = "H1" } },
@@ -68,7 +68,7 @@ namespace SearchjsToExpression
                     Lotery  = new int[] { 4, 5 }
                 },
                 new Person( ){ 
-                    Name = "João",
+                    Name = "João da silva",
                     Detail = new PersonDetail( ){ 
                         Age = 18, Gender = "B", 
                         Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M2", Race = "H2" } },
@@ -103,7 +103,8 @@ namespace SearchjsToExpression
             //var exp = Utils.CreateExpression<Person>( "Cars.HP", 400, "lte" );
             //var exp = Utils.CreateExpression<Person>( "Detail.Doges.Name", "Max" );
             //var exp = Utils.CreateExpression<Person>( "Detail.Days", 2 );
-            var exp = Utils.CreateExpression<Person>( "Name", "edr", "_text", true );
+            //var exp = Utils.CreateExpression<Person>( "Name", "edr", "_text", true );
+            var exp = Utils.CreateExpression<Person>( "Name", "de", "_word");
 
             var result = people.Where( exp );
 

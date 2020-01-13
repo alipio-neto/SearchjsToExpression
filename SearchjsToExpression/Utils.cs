@@ -4,13 +4,16 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SearchjsToExpression
 {
     public static class Utils
     {
-        public static Expression Compare ( Expression left, Expression right, string comparator = "" )
+        public static Expression Compare ( Expression left, object rightValue, string comparator = "" )
         {
+            var right = Expression.Constant( rightValue );
+
             switch( comparator )
             {
                 case "":
@@ -29,6 +32,14 @@ namespace SearchjsToExpression
                     return Expression.LessThan( left, right ); ;
                 case "_text":
                     return Expression.Call( left, typeof( string ).GetMethod( "Contains", new[ ] { typeof( string ) } ), right );
+                case "_word":
+                    var regex = new Regex( string.Format( @"\b{0}\b", Regex.Escape( rightValue.ToString( ) ) ), RegexOptions.Compiled );
+                    var constRegex = Expression.Constant( regex );
+
+                    var methodInfo = typeof( Regex ).GetMethod( "IsMatch", new Type[ ] { typeof( string ) } );
+                    var paramsEx = new Expression[ ] { left };
+
+                    return Expression.Call( constRegex, methodInfo, paramsEx );
                 case "_start":
                     return Expression.Call( left, typeof( string ).GetMethod( "StartsWith", new[ ] { typeof( string ) } ), right );
                 case "_end":
@@ -96,11 +107,9 @@ namespace SearchjsToExpression
             }
             else
             {
-                var right = Expression.Constant( rightValue );
+                var innerLambda = Compare( left, rightValue, comparator );
 
-                var innerLambda = Compare( left, right, comparator );
-
-                if ( not )
+                if( not )
                     innerLambda = Expression.Not( innerLambda );
 
                 return Expression.Lambda( innerLambda, param );
