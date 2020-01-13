@@ -69,11 +69,11 @@ namespace SearchjsToExpression
             {
                 if( property == null )
                 {
-                    property = type.GetProperty( member );
+                    property = type.GetProperty( member, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance );
                 }
                 else
                 {
-                    property = property.PropertyType.GetProperty( member );
+                    property = property.PropertyType.GetProperty( member, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance );
                 }
 
                 if( property != null )

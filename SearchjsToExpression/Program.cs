@@ -104,13 +104,17 @@ namespace SearchjsToExpression
             //var exp = Utils.CreateExpression<Person>( "Detail.Doges.Name", "Max" );
             //var exp = Utils.CreateExpression<Person>( "Detail.Days", 2 );
             //var exp = Utils.CreateExpression<Person>( "Name", "edr", "_text", true );
-            var exp = Utils.CreateExpression<Person>( "Name", "de", "_word");
+            //var exp = Utils.CreateExpression<Person>( "Name", "de", "_word");
+
+
+            //var exp = Utils.CreateExpression<Person>( "cars.brand", "BMW" );
+            var exp = Utils.CreateExpression<Person>( "detail.dogs.race", "H2" );
 
             var result = people.Where( exp );
 
             var ab = result.ToList( );
 
-            Console.ReadKey( );
+            //Console.ReadKey( );
         }
     }
 }
