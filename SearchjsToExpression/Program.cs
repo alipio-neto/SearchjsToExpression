@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -39,7 +40,7 @@ namespace SearchjsToExpression
     {
         static void Main( string[ ] args )
         {
-            string str = "{Detail.Age: 30}";
+            string str = "{ Detail.Age: 30 }";
 
             var people = new List<Person>( )
             {
@@ -68,7 +69,7 @@ namespace SearchjsToExpression
                     Lotery  = new int[] { 4, 5 }
                 },
                 new Person( ){ 
-                    Name = "João da silva",
+                    Name = "Joana",
                     Detail = new PersonDetail( ){ 
                         Age = 18, Gender = "B", 
                         Dogs  = new List<Dog>( ) { new Dog( ) { Name = "M2", Race = "H2" } },
@@ -81,18 +82,56 @@ namespace SearchjsToExpression
                 }
             };
 
+            //string json = "{ \"Detail.Age\" : 30 }";
+            //string json = "{ \"name\":[ \"John\", \"Joana\" ]}";
+            string json = "{ \"detail.dogs.race\": \"H2\" }";
+            //string json = "{age:{from:30,to:80}}";
+            //string json = "{ \"name\": \"John\",\"age\": 30,\"_join\": \"OR\"}";
+            //string json = "{ \"_join\": \"OR\", \"terms\":[{ \"name\": \"John\", \"age\": 30},{ \"name\": \"Jill\",\"location\": \"Canada\"}]}";
+
+            Expression<Func<Person, bool>> exp = null;
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
+            JToken node = JToken.Parse( json );
 
-            //var a = people.Any( x => x.Detail.Dogs.Any( x => x.Name == "Max" ) );
+            Utils.WalkNode( node, prop =>
+            {
+                if( prop.Value.Type == JTokenType.Array )
+                {
+                    var auxList = new List<Expression<Func<Person, bool>>>( );
+                    foreach( var item in ( JArray ) prop.Value )
+                    {
+                        Console.WriteLine( $"{prop.Name} : {item}" );
+                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, item ) );
+                    }
 
+                    list.Add( Utils.BuildOrElse( auxList.ToArray( ) ) );
+                }
+                else if( prop.Value.Type == JTokenType.Object )
+                {
+
+                }
+                else 
+                {
+                    Console.WriteLine( $"{prop.Name} : {prop.Value}" );
+                    //list.Add( Utils.CreateExpression<Person>( prop.Name, (( JValue )prop.Value ).Value ) );
+                    list.Add( Utils.CreateExpression<Person>( prop.Name, ( ( JValue ) prop.Value ).Value ) );
+                }
+            } );
+
+            if( list.Count == 1 )
+            {
+                exp = list.FirstOrDefault( );
+            }
+
+            #region coments
+            //List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
             //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "M" ) );
             //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
             //list.Add( Utils.CreateExpression<Person>( "Detail.Gender", "B" ) );
             //list.Add( Utils.CreateExpression<Person>( "Name", "João") );
 
-            //var exp = Utils.BuildOrElse( list.ToArray( ) );
+            //exp = Utils.BuildOrElse( list.ToArray( ) );
             //var exp = Utils.BuildAnd( list.ToArray( ) );
-
             //var exp2 = Utils.BuildOrElse( exp, Utils.CreateExpression<Person>( "Detail.Gender", "F" ) );
 
             //var exp = Utils.CreateExpression<Person>( "Cars.Brand", "BMW", "", true );
@@ -105,13 +144,11 @@ namespace SearchjsToExpression
             //var exp = Utils.CreateExpression<Person>( "Detail.Days", 2 );
             //var exp = Utils.CreateExpression<Person>( "Name", "edr", "_text", true );
             //var exp = Utils.CreateExpression<Person>( "Name", "de", "_word");
-
-
             //var exp = Utils.CreateExpression<Person>( "cars.brand", "BMW" );
-            var exp = Utils.CreateExpression<Person>( "detail.dogs.race", "H2" );
+            //var exp = Utils.CreateExpression<Person>( "detail.dogs.race", "H2" );
+            #endregion
 
-            var result = people.Where( exp );
-
+            var result = people.Where( exp.Compile() );
             var ab = result.ToList( );
 
             //Console.ReadKey( );

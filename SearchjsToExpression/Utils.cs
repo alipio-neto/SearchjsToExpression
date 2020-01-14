@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -10,9 +11,10 @@ namespace SearchjsToExpression
 {
     public static class Utils
     {
-        public static Expression Compare ( Expression left, object rightValue, string comparator = "" )
+        public static Expression Compare ( Expression left, object rightValue, Type rightType, string comparator = "" )
         {
-            var right = Expression.Constant( rightValue );
+            var convertedObject = Convert.ChangeType( rightValue, rightType );
+            var right = Expression.Constant( convertedObject );
 
             switch( comparator )
             {
@@ -51,10 +53,30 @@ namespace SearchjsToExpression
             return null;
         }
 
-        public static Func<T, bool> CreateExpression<T>( string propertyName, object rightValue, string comparator = "", bool not = false )
+        public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue, string comparator = "", bool not = false )
         {
             var exp = BuildExpression( propertyName, rightValue, not, typeof( T ), comparator );
-            return ( Func<T, bool> ) exp.Compile( );
+            return ( Expression<Func<T, bool>> ) exp;
+        }
+
+        public static void WalkNode( JToken node, Action<JProperty> propertyAction = null )
+        {
+            if( node.Type == JTokenType.Object )
+            {
+                foreach( JProperty child in node.Children<JProperty>( ) )
+                {
+                    if( propertyAction != null )
+                        propertyAction( child );
+                    WalkNode( child.Value, propertyAction );
+                }
+            }
+            else if( node.Type == JTokenType.Array )
+            {
+                foreach( JToken child in node.Children( ) )
+                {
+                    WalkNode( child, propertyAction );
+                }
+            }
         }
 
         public static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
@@ -107,7 +129,7 @@ namespace SearchjsToExpression
             }
             else
             {
-                var innerLambda = Compare( left, rightValue, comparator );
+                var innerLambda = Compare( left, rightValue, property.PropertyType, comparator );
 
                 if( not )
                     innerLambda = Expression.Not( innerLambda );
