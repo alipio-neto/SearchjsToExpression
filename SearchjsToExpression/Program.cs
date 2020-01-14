@@ -94,13 +94,12 @@ namespace SearchjsToExpression
             //string json = "{ \"detail.dogs.race\": \"H2\" }";
             //string json = "{ \"Detail.age\" : { \"from\" : 30 , \"to\" : 80 } }";
             //string json = "{ \"name\": \"Joana\",\"detail.age\": 30,\"_join\": \"OR\"}";
-            string json = " { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 25 , \"to\" : 40 }, \"_join\": \"OR\" }";
-            //string json = "{ \"_join\": \"OR\", \"terms\":[{ \"name\": \"John\", \"age\": 30},{ \"name\": \"Jill\",\"location\": \"Canada\"}]}";
+            //string json = " { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 25 , \"to\" : 40 }, \"_join\": \"OR\" }";
+            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30},{ \"name\": \"Jill\",\"Detail.age\": 18 } ], \"_join\": \"OR\" }";
 
             Expression<Func<Person, bool>> exp = null;
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
             JToken node = JToken.Parse( json );
-            string parent = "";
 
             Utils.WalkNode( node, prop =>
             {
@@ -143,7 +142,7 @@ namespace SearchjsToExpression
                         list.Add( Utils.CreateExpression<Person>( prop.Name, prop.Value ) );
                     }
 
-                    Console.WriteLine( $"{parent}.{prop.Name} : {prop.Value}" );
+                    Console.WriteLine( $"{prop.Name} : {prop.Value}" );
                 }
             } );
 

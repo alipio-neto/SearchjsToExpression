@@ -65,7 +65,7 @@ namespace SearchjsToExpression
         {
             if( node.Type == JTokenType.Object )
             {
-                foreach( JProperty child in node.Children<JProperty>( ) )
+                foreach( JProperty child in node.Children<JProperty>( ).OrderBy( x => x.Name ) )
                 {
                     if( propertyAction != null )
                         propertyAction( child );
