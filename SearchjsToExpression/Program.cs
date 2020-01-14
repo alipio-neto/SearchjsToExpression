@@ -36,11 +36,18 @@ namespace SearchjsToExpression
         public int HP { get; set; }
     }
 
+    public enum eMainOrder
+    {
+        And,
+        Or
+    }
+
     class Program
     {
         static void Main( string[ ] args )
         {
             string str = "{ Detail.Age: 30 }";
+            eMainOrder mainOrder = eMainOrder.And;
 
             var people = new List<Person>( )
             {
@@ -84,43 +91,76 @@ namespace SearchjsToExpression
 
             //string json = "{ \"Detail.Age\" : 30 }";
             //string json = "{ \"name\":[ \"John\", \"Joana\" ]}";
-            string json = "{ \"detail.dogs.race\": \"H2\" }";
-            //string json = "{age:{from:30,to:80}}";
-            //string json = "{ \"name\": \"John\",\"age\": 30,\"_join\": \"OR\"}";
+            //string json = "{ \"detail.dogs.race\": \"H2\" }";
+            //string json = "{ \"Detail.age\" : { \"from\" : 30 , \"to\" : 80 } }";
+            //string json = "{ \"name\": \"Joana\",\"detail.age\": 30,\"_join\": \"OR\"}";
+            string json = " { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 25 , \"to\" : 40 }, \"_join\": \"OR\" }";
             //string json = "{ \"_join\": \"OR\", \"terms\":[{ \"name\": \"John\", \"age\": 30},{ \"name\": \"Jill\",\"location\": \"Canada\"}]}";
 
             Expression<Func<Person, bool>> exp = null;
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
             JToken node = JToken.Parse( json );
+            string parent = "";
 
             Utils.WalkNode( node, prop =>
             {
                 if( prop.Value.Type == JTokenType.Array )
                 {
-                    var auxList = new List<Expression<Func<Person, bool>>>( );
-                    foreach( var item in ( JArray ) prop.Value )
+                    if( prop.Name != "terms" )
                     {
-                        Console.WriteLine( $"{prop.Name} : {item}" );
-                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, item ) );
-                    }
+                        var auxList = new List<Expression<Func<Person, bool>>>( );
+                        foreach( var item in ( JArray ) prop.Value )
+                        {
+                            Console.WriteLine( $"{prop.Name} : {item}" );
+                            auxList.Add( Utils.CreateExpression<Person>( prop.Name, item ) );
+                        }
 
-                    list.Add( Utils.BuildOrElse( auxList.ToArray( ) ) );
+                        list.Add( Utils.BuildOrElse( auxList.ToArray( ) ) );
+                    }
                 }
                 else if( prop.Value.Type == JTokenType.Object )
                 {
+                    var auxList = new List<Expression<Func<Person, bool>>>( );
+                    foreach( JProperty child in prop.Value.Children<JProperty>( ) )
+                    {
+                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, child.Value, child.Name ) );
+                    }
 
+                    list.Add( Utils.BuildAnd( auxList.ToArray( ) ) );
                 }
-                else 
+                else
                 {
-                    Console.WriteLine( $"{prop.Name} : {prop.Value}" );
-                    //list.Add( Utils.CreateExpression<Person>( prop.Name, (( JValue )prop.Value ).Value ) );
-                    list.Add( Utils.CreateExpression<Person>( prop.Name, ( ( JValue ) prop.Value ).Value ) );
+                    if( prop.Name.StartsWith( "_" ) )
+                    {
+                        if( prop.Name == "_join" )
+                        {
+                            if( prop.Value.ToString( ) == "OR" )
+                                mainOrder = eMainOrder.Or;
+                        }
+                    }
+                    else 
+                    {
+                        list.Add( Utils.CreateExpression<Person>( prop.Name, prop.Value ) );
+                    }
+
+                    Console.WriteLine( $"{parent}.{prop.Name} : {prop.Value}" );
                 }
             } );
 
             if( list.Count == 1 )
             {
                 exp = list.FirstOrDefault( );
+            } 
+            else
+            {
+                if( mainOrder == eMainOrder.And )
+                {
+                    exp = Utils.BuildAnd( list.ToArray( ) );
+                } 
+                else
+                {
+                    exp = Utils.BuildOrElse( list.ToArray( ) );
+                }
             }
 
             #region coments

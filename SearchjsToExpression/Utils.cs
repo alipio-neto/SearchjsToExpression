@@ -11,6 +11,8 @@ namespace SearchjsToExpression
 {
     public static class Utils
     {
+        public static readonly List<string> comparators = new List<string>( ) { "from", "to", "gte", "gt", "lte", "lt" };
+
         public static Expression Compare ( Expression left, object rightValue, Type rightType, string comparator = "" )
         {
             var convertedObject = Convert.ChangeType( rightValue, rightType );
@@ -67,7 +69,17 @@ namespace SearchjsToExpression
                 {
                     if( propertyAction != null )
                         propertyAction( child );
-                    WalkNode( child.Value, propertyAction );
+
+                    /* casos age: {from:30, to:35}, não prosseguir, tudo é tratado no parent */
+                    if( child.Value.Type == JTokenType.Object )
+                    {
+                        if( !comparators.Any( x => x == child.Value.Children<JProperty>( ).FirstOrDefault( ).Name ) )
+                            WalkNode( child.Value, propertyAction );
+                    } 
+                    else
+                    {
+                        WalkNode( child.Value, propertyAction );
+                    }
                 }
             }
             else if( node.Type == JTokenType.Array )
