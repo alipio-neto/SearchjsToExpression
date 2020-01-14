@@ -70,15 +70,18 @@ namespace SearchjsToExpression
                     if( propertyAction != null )
                         propertyAction( child );
 
-                    /* casos age: {from:30, to:35}, não prosseguir, tudo é tratado no parent */
-                    if( child.Value.Type == JTokenType.Object )
+                    if( child.Name != "terms" )
                     {
-                        if( !comparators.Any( x => x == child.Value.Children<JProperty>( ).FirstOrDefault( ).Name ) )
+                        /* casos age: {from:30, to:35}, não prosseguir, tudo é tratado no parent */
+                        if( child.Value.Type == JTokenType.Object )
+                        {
+                            if( !comparators.Any( x => x == child.Value.Children<JProperty>( ).FirstOrDefault( ).Name ) )
+                                WalkNode( child.Value, propertyAction );
+                        }
+                        else
+                        {
                             WalkNode( child.Value, propertyAction );
-                    } 
-                    else
-                    {
-                        WalkNode( child.Value, propertyAction );
+                        }
                     }
                 }
             }

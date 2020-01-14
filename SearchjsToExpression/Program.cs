@@ -105,15 +105,26 @@ namespace SearchjsToExpression
             {
                 if( prop.Value.Type == JTokenType.Array )
                 {
-                    if( prop.Name != "terms" )
+                    var auxList = new List<Expression<Func<Person, bool>>>( );
+                    foreach( var item in ( JArray ) prop.Value )
                     {
-                        var auxList = new List<Expression<Func<Person, bool>>>( );
-                        foreach( var item in ( JArray ) prop.Value )
+                        if( item.Type == JTokenType.Object )
                         {
-                            Console.WriteLine( $"{prop.Name} : {item}" );
+                            foreach( JProperty child in item.Children<JProperty>( ) )
+                            {
+                                auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value) );
+                            }
+
+                            list.Add( Utils.BuildAnd( auxList.ToArray( ) ) );
+                        }
+                        else
+                        {
                             auxList.Add( Utils.CreateExpression<Person>( prop.Name, item ) );
                         }
+                    }
 
+                    if( prop.Name != "terms" )
+                    {
                         list.Add( Utils.BuildOrElse( auxList.ToArray( ) ) );
                     }
                 }
