@@ -51,6 +51,7 @@ namespace SearchjsToExpression
             eOrderTypes currentOrder = eOrderTypes.And;
             bool mainNot = false;
             bool currentNot = false;
+            string comparator = "";
 
             var people = new List<Person>( )
             {
@@ -97,16 +98,20 @@ namespace SearchjsToExpression
             //string json = "{ \"_not\": true, \"name\":[ \"John\", \"Joana\" ]}";
             //string json = "{ \"name\":\"Joan\", \"_not\": true, \"_start\": true }";
             //string json = "{ \"detail.dogs.race\": \"H2\" }";
-            //string json = "{ \"_not\": true, \"Detail.age\" : { \"from\" : 50 } }";
+            //string json = "{ \"Detail.age\" : { \"from\" : 30, \"to\": 35 } }";
+            //string json = "{ \"_not\": true, \"Detail.age\" : { \"from\" : 30, \"to\": 35 } }";
             //string json = "{ \"name\": \"Joana\",\"detail.age\": 30,\"_join\": \"OR\"}";
             //string json = " { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 25 , \"to\" : 40 }, \"_join\": \"OR\" }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30},{ \"name\": \"Jill\",\"Detail.age\": 18 } ], \"_join\": \"OR\" }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_join\": \"OR\"},{ \"name\": \"Jill\",\"Detail.age\": 18, \"_join\": \"OR\" } ], \"_join\": \"AND\" }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_not\": true } ], \"_not\": true }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30} ], \"_not\": true }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 30, \"to\": 35 } } ], \"_not\": true }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\"}, {\"Detail.age\" : { \"from\" : 30, \"to\": 35 }, \"_not\": true } ], \"_not\": true }";
+            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"_not\": true}, {\"Detail.age\" : { \"from\" : 30, \"to\": 35 } } ], \"_not\": true }";
 
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_not\": true }, { \"name\": \"Jill\", \"Detail.age\": 18 } ] }";
-            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"_not\": true }, { \"Detail.age\": 18 } ], \"_not\": true }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"_not\": true }, { \"Detail.age\": 18 } ], \"_not\": true }";
 
             Expression<Func<Person, bool>> exp = null;
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
@@ -116,20 +121,21 @@ namespace SearchjsToExpression
             {
                 if( prop.Value.Type == JTokenType.Object )
                 {
+                    //{ \"Detail.age\" : { \"from\" : 30, \"to\": 35 } }
                     var auxList = new List<Expression<Func<Person, bool>>>( );
                     foreach( JProperty child in prop.Value.Children<JProperty>( ) )
                     {
-                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, child.Value, mainNot, child.Name ) );
+                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, child.Value, false, child.Name ) );
                     }
 
-                    list.Add( Utils.BuildAnd( auxList.ToArray( ) ) );
+                    list.Add( Utils.BuildAnd( mainNot, auxList.ToArray( ) ) );
                 }
                 else if( prop.Value.Type == JTokenType.Array )
                 {
                     var auxList = new List<Expression<Func<Person, bool>>>( );
                     foreach( var item in ( JArray ) prop.Value )
                     {
-                        if( item.Type == JTokenType.Object )
+                        if( item.Type == JTokenType.Object ) //terms
                         {
                             currentOrder = eOrderTypes.And;
                             currentNot = mainNot;
@@ -152,7 +158,21 @@ namespace SearchjsToExpression
                                 }
                                 else
                                 {
-                                    auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value, currentNot ) );
+                                    if( child.Value.Type == JTokenType.Object )
+                                    {
+                                        //{ \"Detail.age\" : { \"from\" : 30, \"to\": 35 } }
+                                        var newAuxList = new List<Expression<Func<Person, bool>>>( );
+                                        foreach( JProperty ch in child.Value.Children<JProperty>( ) )
+                                        {
+                                            newAuxList.Add( Utils.CreateExpression<Person>( child.Name, ch.Value, false, ch.Name ) );
+                                        }
+
+                                        auxList.Add( Utils.BuildAnd( currentNot, newAuxList.ToArray( ) ) );
+                                    }
+                                    else
+                                    {
+                                        auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value, currentNot ) );
+                                    }
                                 }
                             }
 
@@ -168,6 +188,7 @@ namespace SearchjsToExpression
 
                     if( prop.Name != "terms" )
                     {
+                        //{ \"name\":[ \"John\", \"Joana\" ]}
                         list.Add( Utils.BuildOrElse( auxList.ToArray( ) ) );
                     }
                 }
@@ -240,6 +261,11 @@ namespace SearchjsToExpression
             #endregion
 
             var result = people.Where( exp.Compile() );
+
+            //var b = people.Where( x => x.Detail.Age >= 30 && x.Detail.Age <= 35 );
+            //var c = people.Where( x => x.Detail.Age <= 30 && x.Detail.Age >= 35 );
+            //var d = people.Where( x => !(x.Detail.Age >= 30 && x.Detail.Age <= 35) );
+
             var ab = result.ToList( );
 
             //Console.ReadKey( );

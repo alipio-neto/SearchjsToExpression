@@ -120,7 +120,7 @@ namespace SearchjsToExpression
             }
         }
 
-        public static Expression<T> Compose<T>( this Expression<T> first, Expression<T> second, Func<Expression, Expression, Expression> merge )
+        public static Expression<T> Compose<T>( this Expression<T> first, Expression<T> second, Func<Expression, Expression, Expression> merge, bool not )
         {
             // build parameter map (from parameters of second to parameters of first)
             var map = first.Parameters.Select( ( f, i ) => new { f, s = second.Parameters[ i ] } ).ToDictionary( p => p.s, p => p.f );
@@ -128,30 +128,45 @@ namespace SearchjsToExpression
             // replace parameters in the second lambda expression with parameters from the first
             var secondBody = ParameterRebinder.ReplaceParameters( map, second.Body );
 
+            var merged = merge( first.Body, secondBody );
+
+            if( not )
+                merged = Expression.Not( merged );
+
             // apply composition of lambda expression bodies to parameters from the first expression 
-            return Expression.Lambda<T>( merge( first.Body, secondBody ), first.Parameters );
+            return Expression.Lambda<T>( merged, first.Parameters );
         }
 
-        public static Expression<Func<T, bool>> And<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second )
+        public static Expression<Func<T, bool>> And<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
         {
-            return first.Compose( second, Expression.And );
+            return first.Compose( second, Expression.And, not );
         }
 
-        public static Expression<Func<T, bool>> OrElse<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second )
+        public static Expression<Func<T, bool>> OrElse<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
         {
-            return first.Compose( second, Expression.OrElse );
+            return first.Compose( second, Expression.OrElse, not );
+        }
+
+        public static Expression<Func<T, bool>> BuildAnd<T>( bool not, params Expression<Func<T, bool>>[ ] conditions )
+        {
+            return conditions.Aggregate<Expression<Func<T, bool>>, Expression<Func<T, bool>>>( null, ( current, expression ) => 
+                current == null ? expression : current.And( expression, not ) );
         }
 
         public static Expression<Func<T, bool>> BuildAnd<T>( params Expression<Func<T, bool>>[ ] conditions )
         {
-            return conditions.Aggregate<Expression<Func<T, bool>>, Expression<Func<T, bool>>>( null, ( current, expression ) => 
-                current == null ? expression : current.And( expression ) );
+            return BuildAnd( false, conditions );
+        }
+
+        public static Expression<Func<T, bool>> BuildOrElse<T>( bool not, params Expression<Func<T, bool>>[ ] conditions )
+        {
+            return conditions.Aggregate<Expression<Func<T, bool>>, Expression<Func<T, bool>>>( null, ( current, expression ) =>
+                current == null ? expression : current.OrElse( expression, not ) );
         }
 
         public static Expression<Func<T, bool>> BuildOrElse<T>( params Expression<Func<T, bool>>[ ] conditions )
         {
-            return conditions.Aggregate<Expression<Func<T, bool>>, Expression<Func<T, bool>>>( null, ( current, expression ) => 
-                current == null ? expression : current.OrElse( expression ) );
+            return BuildOrElse( false, conditions );
         }
     }
 }
