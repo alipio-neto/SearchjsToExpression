@@ -96,7 +96,9 @@ namespace SearchjsToExpression
             //string json = "{ \"Detail.Age\" : 30 }";
             //string json = "{ \"name\":[ \"John\", \"Joana\" ]}";
             //string json = "{ \"_not\": true, \"name\":[ \"John\", \"Joana\" ]}";
-            //string json = "{ \"name\":\"Joan\", \"_not\": true, \"_start\": true }";
+            //string json = "{ \"name\":\"Joan\", \"_start\": true }";
+            //string json = "{ \"name\":\"de\", \"_word\": true }";
+            string json = "{ \"name\":\"de\", \"_word\": false }";
             //string json = "{ \"detail.dogs.race\": \"H2\" }";
             //string json = "{ \"Detail.age\" : { \"from\" : 30, \"to\": 35 } }";
             //string json = "{ \"_not\": true, \"Detail.age\" : { \"from\" : 30, \"to\": 35 } }";
@@ -108,10 +110,11 @@ namespace SearchjsToExpression
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30} ], \"_not\": true }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 30, \"to\": 35 } } ], \"_not\": true }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\"}, {\"Detail.age\" : { \"from\" : 30, \"to\": 35 }, \"_not\": true } ], \"_not\": true }";
-            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"_not\": true}, {\"Detail.age\" : { \"from\" : 30, \"to\": 35 } } ], \"_not\": true }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"_not\": true}, {\"Detail.age\" : { \"from\" : 30, \"to\": 35 } } ], \"_not\": true }";
 
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_not\": true }, { \"name\": \"Jill\", \"Detail.age\": 18 } ] }";
-            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"_not\": true }, { \"Detail.age\": 18 } ], \"_not\": true }";
+            //string json = "{ \"terms\" :[ { \"name\":\"Lara\", \"_text\": true }, { \"name\": \"Joana\" } ]}";
+            //string json = "{ \"_text\": true, \"terms\" :[ { \"name\":\"Lara\" }, { \"name\": \"Joana\" } ]}";
 
             Expression<Func<Person, bool>> exp = null;
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
@@ -139,6 +142,7 @@ namespace SearchjsToExpression
                         {
                             currentOrder = eOrderTypes.And;
                             currentNot = mainNot;
+                            comparator = "";
 
                             foreach( JProperty child in item.Children<JProperty>( ).OrderBy( x => x.Name ) )
                             {
@@ -154,7 +158,11 @@ namespace SearchjsToExpression
                                         if( ( bool ) child.Value )
                                             currentNot = !currentNot;
                                     }
-
+                                    else
+                                    {
+                                        if( ( bool ) child.Value )
+                                            comparator = child.Name;
+                                    }
                                 }
                                 else
                                 {
@@ -171,7 +179,7 @@ namespace SearchjsToExpression
                                     }
                                     else
                                     {
-                                        auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value, currentNot ) );
+                                        auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value, currentNot, comparator ) );
                                     }
                                 }
                             }
@@ -182,7 +190,7 @@ namespace SearchjsToExpression
                         }
                         else
                         {
-                            auxList.Add( Utils.CreateExpression<Person>( prop.Name, item, mainNot ) );
+                            auxList.Add( Utils.CreateExpression<Person>( prop.Name, item, mainNot, comparator ) );
                         }
                     }
 
@@ -211,10 +219,15 @@ namespace SearchjsToExpression
                             if( ( bool ) prop.Value )
                                 mainNot = !mainNot;
                         }
+                        else
+                        {
+                            if( ( bool ) prop.Value )
+                                comparator = prop.Name;
+                        }
                     }
                     else
                     {
-                        list.Add( Utils.CreateExpression<Person>( prop.Name, prop.Value, mainNot ) );
+                        list.Add( Utils.CreateExpression<Person>( prop.Name, prop.Value, mainNot, comparator ) );
                     }
                 }
             }

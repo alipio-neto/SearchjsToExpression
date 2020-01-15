@@ -55,7 +55,7 @@ namespace SearchjsToExpression
             return null;
         }
 
-        public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue, bool not, string comparator = "" )
+        public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue, bool not, string comparator )
         {
             var exp = BuildExpression( propertyName, rightValue, not, typeof( T ), comparator );
             return ( Expression<Func<T, bool>> ) exp;
