@@ -49,6 +49,8 @@ namespace SearchjsToExpression
         {
             eOrderTypes mainOrder = eOrderTypes.Null;
             eOrderTypes currentOrder = eOrderTypes.And;
+            bool mainNot = false;
+            bool currentNot = false;
 
             var people = new List<Person>( )
             {
@@ -92,13 +94,19 @@ namespace SearchjsToExpression
 
             //string json = "{ \"Detail.Age\" : 30 }";
             //string json = "{ \"name\":[ \"John\", \"Joana\" ]}";
+            //string json = "{ \"_not\": true, \"name\":[ \"John\", \"Joana\" ]}";
+            //string json = "{ \"name\":\"Joan\", \"_not\": true, \"_start\": true }";
             //string json = "{ \"detail.dogs.race\": \"H2\" }";
-            //string json = "{ \"Detail.age\" : { \"from\" : 30 , \"to\" : 80 } }";
+            //string json = "{ \"_not\": true, \"Detail.age\" : { \"from\" : 50 } }";
             //string json = "{ \"name\": \"Joana\",\"detail.age\": 30,\"_join\": \"OR\"}";
             //string json = " { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 25 , \"to\" : 40 }, \"_join\": \"OR\" }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30},{ \"name\": \"Jill\",\"Detail.age\": 18 } ], \"_join\": \"OR\" }";
             //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_join\": \"OR\"},{ \"name\": \"Jill\",\"Detail.age\": 18, \"_join\": \"OR\" } ], \"_join\": \"AND\" }";
-            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30},{ \"name\": \"Jill\",\"Detail.age\": 18, \"_join\": \"OR\" } ], \"_join\": \"AND\" }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_not\": true } ], \"_not\": true }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30} ], \"_not\": true }";
+
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_not\": true }, { \"name\": \"Jill\", \"Detail.age\": 18 } ] }";
+            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"_not\": true }, { \"Detail.age\": 18 } ], \"_not\": true }";
 
             Expression<Func<Person, bool>> exp = null;
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
@@ -111,7 +119,7 @@ namespace SearchjsToExpression
                     var auxList = new List<Expression<Func<Person, bool>>>( );
                     foreach( JProperty child in prop.Value.Children<JProperty>( ) )
                     {
-                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, child.Value, child.Name ) );
+                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, child.Value, mainNot, child.Name ) );
                     }
 
                     list.Add( Utils.BuildAnd( auxList.ToArray( ) ) );
@@ -124,17 +132,27 @@ namespace SearchjsToExpression
                         if( item.Type == JTokenType.Object )
                         {
                             currentOrder = eOrderTypes.And;
+                            currentNot = mainNot;
 
                             foreach( JProperty child in item.Children<JProperty>( ).OrderBy( x => x.Name ) )
                             {
-                                if( child.Name == "_join" )
-                                {
-                                    if( child.Value.ToString( ) == "OR" )
-                                        currentOrder = eOrderTypes.Or;
+                                if( child.Name.StartsWith( "_" ) )
+                                { 
+                                    if( child.Name == "_join" )
+                                    {
+                                        if( child.Value.ToString( ) == "OR" )
+                                            currentOrder = eOrderTypes.Or;
+                                    } 
+                                    else if( child.Name == "_not" )
+                                    {
+                                        if( ( bool ) child.Value )
+                                            currentNot = !currentNot;
+                                    }
+
                                 }
                                 else
                                 {
-                                    auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value ) );
+                                    auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value, currentNot ) );
                                 }
                             }
 
@@ -144,7 +162,7 @@ namespace SearchjsToExpression
                         }
                         else
                         {
-                            auxList.Add( Utils.CreateExpression<Person>( prop.Name, item ) );
+                            auxList.Add( Utils.CreateExpression<Person>( prop.Name, item, mainNot ) );
                         }
                     }
 
@@ -167,10 +185,15 @@ namespace SearchjsToExpression
                             if (mainOrder == eOrderTypes.Null)
                                 mainOrder = currentOrder;
                         }
+                        else if( prop.Name == "_not" )
+                        {
+                            if( ( bool ) prop.Value )
+                                mainNot = !mainNot;
+                        }
                     }
                     else
                     {
-                        list.Add( Utils.CreateExpression<Person>( prop.Name, prop.Value ) );
+                        list.Add( Utils.CreateExpression<Person>( prop.Name, prop.Value, mainNot ) );
                     }
                 }
             }

@@ -55,76 +55,10 @@ namespace SearchjsToExpression
             return null;
         }
 
-        public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue, string comparator = "", bool not = false )
+        public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue, bool not, string comparator = "" )
         {
             var exp = BuildExpression( propertyName, rightValue, not, typeof( T ), comparator );
             return ( Expression<Func<T, bool>> ) exp;
-        }
-
-        public static void WalkNode( JToken node, Action<JProperty> propertyAction = null )
-        {
-            if( node.Type == JTokenType.Object )
-            {
-                foreach( JProperty child in node.Children<JProperty>( ).OrderBy( x => x.Name ) )
-                {
-                    if( propertyAction != null )
-                    propertyAction( child );
-
-                    if( child.Name != "terms" )
-                    {
-                        /* casos age: {from:30, to:35}, não prosseguir, tudo é tratado no parent */
-                        if( child.Value.Type == JTokenType.Object )
-                        {
-                            if( !comparators.Any( x => x == child.Value.Children<JProperty>( ).FirstOrDefault( ).Name ) )
-                                WalkNode( child.Value, propertyAction );
-                        }
-                        else
-                        {
-                            WalkNode( child.Value, propertyAction );
-                        }
-                    }
-                }
-            }
-            else if( node.Type == JTokenType.Array )
-            {
-                foreach( JToken child in node.Children( ) )
-                {
-                    WalkNode( child, propertyAction );
-                }
-            }
-        }
-
-        public static Expression<Func<Person, bool>> WalkNode( JToken node )
-        {
-            Expression<Func<Person, bool>> exp = null;
-            if( node.Type == JTokenType.Object )
-            {
-                var auxList = new List<Expression<Func<Person, bool>>>( );
-
-                foreach( JProperty child in node.Children<JProperty>( ).OrderBy( x => x.Name ) )
-                {
-                    if( child.Type == JTokenType.Object )
-                    {
-
-                    }
-                    else if ( child.Type == JTokenType.Array )
-                    {
-
-                    }
-
-                    exp = WalkNode( child.Value );
-                    auxList.Add( exp );
-                }
-            }
-            else if( node.Type == JTokenType.Array )
-            {
-                foreach( JToken child in node.Children( ) )
-                {
-                    exp = WalkNode( child );
-                }
-            }
-
-            return exp;
         }
 
         public static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
