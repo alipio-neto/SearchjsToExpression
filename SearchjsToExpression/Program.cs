@@ -36,8 +36,9 @@ namespace SearchjsToExpression
         public int HP { get; set; }
     }
 
-    public enum eMainOrder
+    public enum eOrderTypes
     {
+        Null,
         And,
         Or
     }
@@ -46,8 +47,8 @@ namespace SearchjsToExpression
     {
         static void Main( string[ ] args )
         {
-            string str = "{ Detail.Age: 30 }";
-            eMainOrder mainOrder = eMainOrder.And;
+            eOrderTypes mainOrder = eOrderTypes.Null;
+            eOrderTypes currentOrder = eOrderTypes.And;
 
             var people = new List<Person>( )
             {
@@ -95,27 +96,51 @@ namespace SearchjsToExpression
             //string json = "{ \"Detail.age\" : { \"from\" : 30 , \"to\" : 80 } }";
             //string json = "{ \"name\": \"Joana\",\"detail.age\": 30,\"_join\": \"OR\"}";
             //string json = " { \"name\": \"Joana\", \"Detail.age\" : { \"from\" : 25 , \"to\" : 40 }, \"_join\": \"OR\" }";
-            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30},{ \"name\": \"Jill\",\"Detail.age\": 18 } ], \"_join\": \"OR\" }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30},{ \"name\": \"Jill\",\"Detail.age\": 18 } ], \"_join\": \"OR\" }";
+            //string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30, \"_join\": \"OR\"},{ \"name\": \"Jill\",\"Detail.age\": 18, \"_join\": \"OR\" } ], \"_join\": \"AND\" }";
+            string json = "{ \"terms\" :[ { \"name\": \"Joana\", \"Detail.age\": 30},{ \"name\": \"Jill\",\"Detail.age\": 18, \"_join\": \"OR\" } ], \"_join\": \"AND\" }";
 
             Expression<Func<Person, bool>> exp = null;
             List<Expression<Func<Person, bool>>> list = new List<Expression<Func<Person, bool>>>( );
             JToken node = JToken.Parse( json );
 
-            Utils.WalkNode( node, prop =>
+            foreach( JProperty prop in node.Children<JProperty>( ).OrderBy( x => x.Name ) )
             {
-                if( prop.Value.Type == JTokenType.Array )
+                if( prop.Value.Type == JTokenType.Object )
+                {
+                    var auxList = new List<Expression<Func<Person, bool>>>( );
+                    foreach( JProperty child in prop.Value.Children<JProperty>( ) )
+                    {
+                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, child.Value, child.Name ) );
+                    }
+
+                    list.Add( Utils.BuildAnd( auxList.ToArray( ) ) );
+                }
+                else if( prop.Value.Type == JTokenType.Array )
                 {
                     var auxList = new List<Expression<Func<Person, bool>>>( );
                     foreach( var item in ( JArray ) prop.Value )
                     {
                         if( item.Type == JTokenType.Object )
                         {
-                            foreach( JProperty child in item.Children<JProperty>( ) )
+                            currentOrder = eOrderTypes.And;
+
+                            foreach( JProperty child in item.Children<JProperty>( ).OrderBy( x => x.Name ) )
                             {
-                                auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value) );
+                                if( child.Name == "_join" )
+                                {
+                                    if( child.Value.ToString( ) == "OR" )
+                                        currentOrder = eOrderTypes.Or;
+                                }
+                                else
+                                {
+                                    auxList.Add( Utils.CreateExpression<Person>( child.Name, child.Value ) );
+                                }
                             }
 
-                            list.Add( Utils.BuildAnd( auxList.ToArray( ) ) );
+                            list.Add( currentOrder == eOrderTypes.And ?  Utils.BuildAnd( auxList.ToArray( ) ) 
+                                : Utils.BuildOrElse( auxList.ToArray( ) ) );
+                            auxList = new List<Expression<Func<Person, bool>>>( );
                         }
                         else
                         {
@@ -128,16 +153,6 @@ namespace SearchjsToExpression
                         list.Add( Utils.BuildOrElse( auxList.ToArray( ) ) );
                     }
                 }
-                else if( prop.Value.Type == JTokenType.Object )
-                {
-                    var auxList = new List<Expression<Func<Person, bool>>>( );
-                    foreach( JProperty child in prop.Value.Children<JProperty>( ) )
-                    {
-                        auxList.Add( Utils.CreateExpression<Person>( prop.Name, child.Value, child.Name ) );
-                    }
-
-                    list.Add( Utils.BuildAnd( auxList.ToArray( ) ) );
-                }
                 else
                 {
                     if( prop.Name.StartsWith( "_" ) )
@@ -145,17 +160,20 @@ namespace SearchjsToExpression
                         if( prop.Name == "_join" )
                         {
                             if( prop.Value.ToString( ) == "OR" )
-                                mainOrder = eMainOrder.Or;
+                                currentOrder = eOrderTypes.Or;
+                            else
+                                currentOrder = eOrderTypes.And;
+
+                            if (mainOrder == eOrderTypes.Null)
+                                mainOrder = currentOrder;
                         }
                     }
-                    else 
+                    else
                     {
                         list.Add( Utils.CreateExpression<Person>( prop.Name, prop.Value ) );
                     }
-
-                    Console.WriteLine( $"{prop.Name} : {prop.Value}" );
                 }
-            } );
+            }
 
             if( list.Count == 1 )
             {
@@ -163,7 +181,7 @@ namespace SearchjsToExpression
             } 
             else
             {
-                if( mainOrder == eMainOrder.And )
+                if( mainOrder == eOrderTypes.And )
                 {
                     exp = Utils.BuildAnd( list.ToArray( ) );
                 } 

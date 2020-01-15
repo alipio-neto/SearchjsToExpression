@@ -68,7 +68,7 @@ namespace SearchjsToExpression
                 foreach( JProperty child in node.Children<JProperty>( ).OrderBy( x => x.Name ) )
                 {
                     if( propertyAction != null )
-                        propertyAction( child );
+                    propertyAction( child );
 
                     if( child.Name != "terms" )
                     {
@@ -92,6 +92,39 @@ namespace SearchjsToExpression
                     WalkNode( child, propertyAction );
                 }
             }
+        }
+
+        public static Expression<Func<Person, bool>> WalkNode( JToken node )
+        {
+            Expression<Func<Person, bool>> exp = null;
+            if( node.Type == JTokenType.Object )
+            {
+                var auxList = new List<Expression<Func<Person, bool>>>( );
+
+                foreach( JProperty child in node.Children<JProperty>( ).OrderBy( x => x.Name ) )
+                {
+                    if( child.Type == JTokenType.Object )
+                    {
+
+                    }
+                    else if ( child.Type == JTokenType.Array )
+                    {
+
+                    }
+
+                    exp = WalkNode( child.Value );
+                    auxList.Add( exp );
+                }
+            }
+            else if( node.Type == JTokenType.Array )
+            {
+                foreach( JToken child in node.Children( ) )
+                {
+                    exp = WalkNode( child );
+                }
+            }
+
+            return exp;
         }
 
         public static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
