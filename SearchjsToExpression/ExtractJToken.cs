@@ -18,11 +18,11 @@ namespace SearchjsToExpression
 
         private class Modifiers
         {
-            public eOrderTypes mainOrder { get; set; }
-            public eOrderTypes currentOrder { get; set; }
-            public bool mainNot { get; set; }
-            public bool currentNot { get; set; }
-            public string comparator { get; set; }
+            public eOrderTypes MainOrder { get; set; }
+            public eOrderTypes CurrentOrder { get; set; }
+            public bool MainNot { get; set; }
+            public bool CurrentNot { get; set; }
+            public string Comparator { get; set; }
         }
 
         private static void SetModifiers( JProperty prop, bool setMain, ref Modifiers mf )
@@ -30,27 +30,35 @@ namespace SearchjsToExpression
             if( prop.Name == "_join" )
             {
                 if( prop.Value.ToString( ) == "OR" )
-                    mf.currentOrder = eOrderTypes.Or;
+                    mf.CurrentOrder = eOrderTypes.Or;
                 else
-                    mf.currentOrder = eOrderTypes.And;
+                    mf.CurrentOrder = eOrderTypes.And;
 
-                if( mf.mainOrder == eOrderTypes.Null && setMain )
-                    mf.mainOrder = mf.currentOrder;
+                if( mf.MainOrder == eOrderTypes.Null && setMain )
+                    mf.MainOrder = mf.CurrentOrder;
             }
             else if( prop.Name == "_not" )
             {
                 if( ( bool ) prop.Value )
                 {
                     if( setMain )
-                        mf.mainNot = !mf.mainNot;
+                        mf.MainNot = !mf.MainNot;
                     else
-                        mf.currentNot = !mf.currentNot;
+                        mf.CurrentNot = !mf.CurrentNot;
                 }
+            }
+            else if( prop.Name == "_propertySearch" )
+            {
+                /* não implementado */
+            }
+            else if( prop.Name == "_propertySearchDepth" )
+            {
+                /* não implementado */
             }
             else
             {
                 if( ( bool ) prop.Value )
-                    mf.comparator = prop.Name;
+                    mf.Comparator = prop.Name;
             }
         }
 
@@ -63,16 +71,16 @@ namespace SearchjsToExpression
                 auxList.Add( Utils.CreateExpression<T>( prop.Name, child.Value, false, child.Name ) );
             }
 
-            return Utils.BuildAnd( mf.mainNot, auxList.ToArray( ) );
+            return Utils.BuildAnd( mf.MainNot, auxList.ToArray( ) );
         }
 
         private static Expression<Func<T, bool>> ProcessTerms<T>( JToken item, ref Modifiers mf )
         {
             var auxList = new List<Expression<Func<T, bool>>>( );
 
-            mf.currentOrder = eOrderTypes.And;
-            mf.currentNot = mf.mainNot;
-            mf.comparator = "";
+            mf.CurrentOrder = eOrderTypes.And;
+            mf.CurrentNot = mf.MainNot;
+            mf.Comparator = "";
 
             foreach( JProperty child in item.Children<JProperty>( ).OrderBy( x => x.Name ) )
             {
@@ -88,12 +96,12 @@ namespace SearchjsToExpression
                     }
                     else
                     {
-                        auxList.Add( Utils.CreateExpression<T>( child.Name, child.Value, mf.currentNot, mf.comparator ) );
+                        auxList.Add( Utils.CreateExpression<T>( child.Name, child.Value, mf.CurrentNot, mf.Comparator ) );
                     }
                 }
             }
 
-            return ( mf.currentOrder == eOrderTypes.And )
+            return ( mf.CurrentOrder == eOrderTypes.And )
                         ? Utils.BuildAnd( auxList.ToArray( ) )
                         : Utils.BuildOrElse( auxList.ToArray( ) );
         }
@@ -111,7 +119,7 @@ namespace SearchjsToExpression
                 }
                 else
                 {
-                    auxList.Add( Utils.CreateExpression<T>( prop.Name, item, mf.mainNot, mf.comparator ) );
+                    auxList.Add( Utils.CreateExpression<T>( prop.Name, item, mf.MainNot, mf.Comparator ) );
                 }
             }
 
@@ -128,11 +136,11 @@ namespace SearchjsToExpression
         {
             var mf = new Modifiers( )
             {
-                mainOrder = eOrderTypes.Null,
-                currentOrder = eOrderTypes.And,
-                mainNot = false,
-                currentNot = false,
-                comparator = ""
+                MainOrder = eOrderTypes.Null,
+                CurrentOrder = eOrderTypes.And,
+                MainNot = false,
+                CurrentNot = false,
+                Comparator = ""
             };
 
             List<Expression<Func<T, bool>>> list = new List<Expression<Func<T, bool>>>( );
@@ -144,7 +152,7 @@ namespace SearchjsToExpression
             }
             else
             {
-                if( mf.mainOrder == eOrderTypes.And || mf.mainOrder == eOrderTypes.Null )
+                if( mf.MainOrder == eOrderTypes.And || mf.MainOrder == eOrderTypes.Null )
                 {
                     return Utils.BuildAnd( list.ToArray( ) );
                 }
@@ -177,7 +185,7 @@ namespace SearchjsToExpression
                     }
                     else
                     {
-                        list.Add( Utils.CreateExpression<T>( prop.Name, prop.Value, mf.mainNot, mf.comparator ) );
+                        list.Add( Utils.CreateExpression<T>( prop.Name, prop.Value, mf.MainNot, mf.Comparator ) );
                     }
                 }
             }
