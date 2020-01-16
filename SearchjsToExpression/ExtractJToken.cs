@@ -9,42 +9,52 @@ namespace SearchjsToExpression
 {
     public static class ExtractJToken
     {
-        private static eOrderTypes mainOrder = eOrderTypes.Null;
-        private static eOrderTypes currentOrder = eOrderTypes.And;
-        private static bool mainNot = false;
-        private static bool currentNot = false;
-        private static string comparator = "";
+        private enum eOrderTypes
+        {
+            Null,
+            And,
+            Or
+        }
 
-        private static void SetModifiers( JProperty prop, bool setMain )
+        private class Modifiers
+        {
+            public eOrderTypes mainOrder { get; set; }
+            public eOrderTypes currentOrder { get; set; }
+            public bool mainNot { get; set; }
+            public bool currentNot { get; set; }
+            public string comparator { get; set; }
+        }
+
+        private static void SetModifiers( JProperty prop, bool setMain, ref Modifiers mf )
         {
             if( prop.Name == "_join" )
             {
                 if( prop.Value.ToString( ) == "OR" )
-                    currentOrder = eOrderTypes.Or;
+                    mf.currentOrder = eOrderTypes.Or;
                 else
-                    currentOrder = eOrderTypes.And;
+                    mf.currentOrder = eOrderTypes.And;
 
-                if( mainOrder == eOrderTypes.Null && setMain )
-                    mainOrder = currentOrder;
+                if( mf.mainOrder == eOrderTypes.Null && setMain )
+                    mf.mainOrder = mf.currentOrder;
             }
             else if( prop.Name == "_not" )
             {
                 if( ( bool ) prop.Value )
                 {
                     if( setMain )
-                        mainNot = !mainNot;
+                        mf.mainNot = !mf.mainNot;
                     else
-                        currentNot = !currentNot;
+                        mf.currentNot = !mf.currentNot;
                 }
             }
             else
             {
                 if( ( bool ) prop.Value )
-                    comparator = prop.Name;
+                    mf.comparator = prop.Name;
             }
         }
 
-        private static Expression<Func<T, bool>> GetFromObject<T>( JProperty prop )
+        private static Expression<Func<T, bool>> GetFromObject<T>( JProperty prop, Modifiers mf )
         {
             //{ \"Detail.age\" : { \"from\" : 30, \"to\": 35 } }
             var auxList = new List<Expression<Func<T, bool>>>( );
@@ -53,42 +63,42 @@ namespace SearchjsToExpression
                 auxList.Add( Utils.CreateExpression<T>( prop.Name, child.Value, false, child.Name ) );
             }
 
-            return Utils.BuildAnd( mainNot, auxList.ToArray( ) );
+            return Utils.BuildAnd( mf.mainNot, auxList.ToArray( ) );
         }
 
-        private static Expression<Func<T, bool>> ProcessTerms<T>( JToken item )
+        private static Expression<Func<T, bool>> ProcessTerms<T>( JToken item, ref Modifiers mf )
         {
             var auxList = new List<Expression<Func<T, bool>>>( );
 
-            currentOrder = eOrderTypes.And;
-            currentNot = mainNot;
-            comparator = "";
+            mf.currentOrder = eOrderTypes.And;
+            mf.currentNot = mf.mainNot;
+            mf.comparator = "";
 
             foreach( JProperty child in item.Children<JProperty>( ).OrderBy( x => x.Name ) )
             {
                 if( child.Name.StartsWith( "_" ) )
                 {
-                    SetModifiers( child, false );
+                    SetModifiers( child, false, ref mf );
                 }
                 else
                 {
                     if( child.Value.Type == JTokenType.Object )
                     {
-                        auxList.Add( GetFromObject<T>( child ) );
+                        auxList.Add( GetFromObject<T>( child, mf ) );
                     }
                     else
                     {
-                        auxList.Add( Utils.CreateExpression<T>( child.Name, child.Value, currentNot, comparator ) );
+                        auxList.Add( Utils.CreateExpression<T>( child.Name, child.Value, mf.currentNot, mf.comparator ) );
                     }
                 }
             }
 
-            return ( currentOrder == eOrderTypes.And )
+            return ( mf.currentOrder == eOrderTypes.And )
                         ? Utils.BuildAnd( auxList.ToArray( ) )
                         : Utils.BuildOrElse( auxList.ToArray( ) );
         }
 
-        private static List<Expression<Func<T, bool>>> GetFromArray<T>( JProperty prop )
+        private static List<Expression<Func<T, bool>>> GetFromArray<T>( JProperty prop, ref Modifiers mf )
         {
             var ret = new List<Expression<Func<T, bool>>>( );
             var auxList = new List<Expression<Func<T, bool>>>( );
@@ -97,11 +107,11 @@ namespace SearchjsToExpression
             {
                 if( item.Type == JTokenType.Object ) //terms
                 {
-                    ret.Add( ProcessTerms<T>( item ) );
+                    ret.Add( ProcessTerms<T>( item, ref mf ) );
                 }
                 else
                 {
-                    auxList.Add( Utils.CreateExpression<T>( prop.Name, item, mainNot, comparator ) );
+                    auxList.Add( Utils.CreateExpression<T>( prop.Name, item, mf.mainNot, mf.comparator ) );
                 }
             }
 
@@ -116,8 +126,17 @@ namespace SearchjsToExpression
 
         public static Expression<Func<T, bool>> Extract<T>( JToken node )
         {
+            var mf = new Modifiers( )
+            {
+                mainOrder = eOrderTypes.Null,
+                currentOrder = eOrderTypes.And,
+                mainNot = false,
+                currentNot = false,
+                comparator = ""
+            };
+
             List<Expression<Func<T, bool>>> list = new List<Expression<Func<T, bool>>>( );
-            list = ProcessJToken<T>( node );
+            list = ProcessJToken<T>( node, ref mf );
 
             if( list.Count == 1 )
             {
@@ -125,7 +144,7 @@ namespace SearchjsToExpression
             }
             else
             {
-                if( mainOrder == eOrderTypes.And || mainOrder == eOrderTypes.Null )
+                if( mf.mainOrder == eOrderTypes.And || mf.mainOrder == eOrderTypes.Null )
                 {
                     return Utils.BuildAnd( list.ToArray( ) );
                 }
@@ -136,7 +155,7 @@ namespace SearchjsToExpression
             }
         }
 
-        private static List<Expression<Func<T, bool>>> ProcessJToken<T>( JToken node )
+        private static List<Expression<Func<T, bool>>> ProcessJToken<T>( JToken node, ref Modifiers mf )
         {
             List<Expression<Func<T, bool>>> list = new List<Expression<Func<T, bool>>>( );
 
@@ -144,21 +163,21 @@ namespace SearchjsToExpression
             {
                 if( prop.Value.Type == JTokenType.Object )
                 {
-                    list.Add( GetFromObject<T>( prop ) );
+                    list.Add( GetFromObject<T>( prop, mf ) );
                 }
                 else if( prop.Value.Type == JTokenType.Array )
                 {
-                    list.AddRange( GetFromArray<T>( prop ) );
+                    list.AddRange( GetFromArray<T>( prop, ref mf ) );
                 }
                 else
                 {
                     if( prop.Name.StartsWith( "_" ) )
                     {
-                        SetModifiers( prop, true );
+                        SetModifiers( prop, true, ref mf );
                     }
                     else
                     {
-                        list.Add( Utils.CreateExpression<T>( prop.Name, prop.Value, mainNot, comparator ) );
+                        list.Add( Utils.CreateExpression<T>( prop.Name, prop.Value, mf.mainNot, mf.comparator ) );
                     }
                 }
             }
