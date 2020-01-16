@@ -11,9 +11,9 @@ namespace SearchjsToExpression
 {
     public static class Utils
     {
-        public static readonly List<string> comparators = new List<string>( ) { "from", "to", "gte", "gt", "lte", "lt" };
+        private static readonly List<string> comparators = new List<string>( ) { "from", "to", "gte", "gt", "lte", "lt" };
 
-        public static Expression Compare ( Expression left, object rightValue, Type rightType, string comparator = "" )
+        private static Expression Compare ( Expression left, object rightValue, Type rightType, string comparator = "" )
         {
             var convertedObject = Convert.ChangeType( rightValue, rightType );
             var right = Expression.Constant( convertedObject );
@@ -61,7 +61,7 @@ namespace SearchjsToExpression
             return ( Expression<Func<T, bool>> ) exp;
         }
 
-        public static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
+        private static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
         {
             var param = Expression.Parameter( type, "x" );
             var isCollection = false;
@@ -120,7 +120,7 @@ namespace SearchjsToExpression
             }
         }
 
-        public static Expression<T> Compose<T>( this Expression<T> first, Expression<T> second, Func<Expression, Expression, Expression> merge, bool not )
+        private static Expression<T> Compose<T>( this Expression<T> first, Expression<T> second, Func<Expression, Expression, Expression> merge, bool not )
         {
             // build parameter map (from parameters of second to parameters of first)
             var map = first.Parameters.Select( ( f, i ) => new { f, s = second.Parameters[ i ] } ).ToDictionary( p => p.s, p => p.f );
@@ -137,12 +137,12 @@ namespace SearchjsToExpression
             return Expression.Lambda<T>( merged, first.Parameters );
         }
 
-        public static Expression<Func<T, bool>> And<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
+        private static Expression<Func<T, bool>> And<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
         {
             return first.Compose( second, Expression.And, not );
         }
 
-        public static Expression<Func<T, bool>> OrElse<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
+        private static Expression<Func<T, bool>> OrElse<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
         {
             return first.Compose( second, Expression.OrElse, not );
         }
