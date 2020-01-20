@@ -58,16 +58,19 @@ namespace SearchjsToExpression
         public static Expression<Func<T, bool>> CreateExpression<T>( string propertyName, object rightValue, bool not, string comparator )
         {
             var exp = BuildExpression( propertyName, rightValue, not, typeof( T ), comparator );
-            return ( Expression<Func<T, bool>> ) exp;
+            var ret = BuildAnd( exp.Select( x => ( Expression<Func<T, bool>> ) x ).ToArray( ) );
+
+            return ret;
         }
 
-        private static LambdaExpression BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
+        private static List<LambdaExpression> BuildExpression ( string propertyName, object rightValue, bool not, Type type, string comparator )
         {
             var param = Expression.Parameter( type, "x" );
             var isCollection = false;
             PropertyInfo property = null;
             Expression left = param;
             string auxPropertyName = "";
+            List<LambdaExpression> ret = new List<LambdaExpression>( );
 
             foreach( var member in propertyName.Split( '.' ) )
             {
@@ -90,11 +93,17 @@ namespace SearchjsToExpression
                         length = ( length + 1 ) > propertyName.Length ? member.Length : length + 1;
                         auxPropertyName = propertyName.Substring( length );
                         isCollection = true;
+                        ret.Add( Expression.Lambda( Expression.NotEqual( left, Expression.Constant( null ) ), param ) );
                         break;
                     }
                     else
                     {
-                        left = Expression.PropertyOrField( left, member );
+                        left = Expression.PropertyOrField( left, $"{member}" );
+
+                        if( Type.GetTypeCode( property.PropertyType ) == TypeCode.Object )
+                        {
+                            ret.Add( Expression.Lambda( Expression.NotEqual( left, Expression.Constant( null ) ), param ) );
+                        }
                     }
                 }
             }
@@ -105,9 +114,10 @@ namespace SearchjsToExpression
                     : property.PropertyType.GetGenericArguments( )[ 0 ];
 
                 var innerFunction = BuildExpression( auxPropertyName, rightValue, not, typeFromList, comparator );
-                var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeFromList }, left, innerFunction );
+                var OuterLambda = Expression.Call( typeof( Enumerable ), "Any", new[ ] { typeFromList }, left, innerFunction.Last( ) );
 
-                return Expression.Lambda( OuterLambda, param );
+                ret.Add( Expression.Lambda( OuterLambda, param ) );
+                return ret;
             }
             else
             {
@@ -116,7 +126,9 @@ namespace SearchjsToExpression
                 if( not )
                     innerLambda = Expression.Not( innerLambda );
 
-                return Expression.Lambda( innerLambda, param );
+                ret.Add( Expression.Lambda( innerLambda, param ) );
+
+                return ret;
             }
         }
 
@@ -139,7 +151,7 @@ namespace SearchjsToExpression
 
         private static Expression<Func<T, bool>> And<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
         {
-            return first.Compose( second, Expression.And, not );
+            return first.Compose( second, Expression.AndAlso, not );
         }
 
         private static Expression<Func<T, bool>> OrElse<T>( this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second, bool not )
